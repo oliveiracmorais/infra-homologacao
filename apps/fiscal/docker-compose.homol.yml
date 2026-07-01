@@ -1,0 +1,20 @@
+services:
+  fiscal-backend:
+    image: ghcr.io/oliveiracmorais/fiscal-backend:staging
+    container_name: fiscal-backend
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - homol-net
+
+  fiscal-frontend:
+    image: ghcr.io/oliveiracmorais/fiscal-frontend:staging
+    container_name: fiscal-frontend
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - homol-net
+
+networks:
+  homol-net:
+    external: true

@@ -1,0 +1,15 @@
+# ============================================
+# Homologation Proxy — Caddy v2
+# ============================================
+
+fiscal-st.duckdns.org {
+    reverse_proxy fiscal-frontend:3000
+}
+
+fapitec.duckdns.org {
+    reverse_proxy fapitec-frontend:3000
+}
+
+revmotrix.duckdns.org {
+    reverse_proxy revmotrix-frontend:3000
+}

@@ -1,0 +1,30 @@
+name: Deploy Infra Base (Caddy + PostgreSQL)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docker-compose.yml"
+      - "Caddyfile"
+      - "scripts/init-dbs.sh"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            rsync -a --delete ${{ github.workspace }}/ /srv/homol/infra/
+            cd /srv/homol/infra
+            docker compose pull
+            docker compose up -d
+            docker image prune -f
+            echo "Infra base deployed"

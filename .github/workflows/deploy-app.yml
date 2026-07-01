@@ -1,0 +1,33 @@
+name: Deploy App to Homologation
+
+on:
+  workflow_call:
+    inputs:
+      app-name:
+        required: true
+        type: string
+    secrets:
+      SSH_HOST:
+        required: true
+      SSH_USER:
+        required: true
+      SSH_KEY:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            set -e
+            cd /srv/homol/apps/${{ inputs.app-name }}
+            docker compose pull
+            docker compose up -d --remove-orphans
+            docker image prune -f
+            echo "Deploy of ${{ inputs.app-name }} completed"
