@@ -26,7 +26,7 @@ jobs:
           APP_NAME: ${{ inputs.app-name }}
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          ssh -i ~/.ssh/deploy_key "$SSH_USER@$SSH_HOST" "cd /srv/homol/apps/$APP_NAME && docker compose pull && docker compose up -d --remove-orphans && docker image prune -f && echo 'Deploy of $APP_NAME completed'"
+          echo "${SSH_KEY}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa "${SSH_USER}@${SSH_HOST}" "cd /srv/homol/apps/${APP_NAME} && docker compose pull && docker compose up -d --remove-orphans && docker image prune -f"
