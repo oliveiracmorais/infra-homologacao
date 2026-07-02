@@ -26,7 +26,6 @@ jobs:
           APP_NAME: ${{ inputs.app-name }}
         run: |
           mkdir -p ~/.ssh
-          echo "${SSH_KEY}" > ~/.ssh/id_rsa
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H "${SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null || true
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa "${SSH_USER}@${SSH_HOST}" "cd /srv/homol/apps/${APP_NAME} && docker compose pull && docker compose up -d --remove-orphans && docker image prune -f"
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" "cd /srv/homol/apps/$APP_NAME && docker compose pull && docker compose up -d --remove-orphans && docker image prune -f"
