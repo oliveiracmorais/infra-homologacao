@@ -18,7 +18,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - name: Deploy via SSH (deploy.sh — backup + migrate + up + health)
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
@@ -28,4 +28,6 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" "export COMPOSE_FILE=/srv/homol/infra/docker-compose.yml:/srv/homol/${{ inputs.app-name }}/docker-compose.yml && cd /srv/homol && docker compose pull && docker compose up -d --remove-orphans && docker image prune -f"
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa \
+            "$SSH_USER@$SSH_HOST" \
+            "cd /srv/homol/scripts && ./deploy.sh --app ${APP_NAME} && docker image prune -f"
