@@ -13,12 +13,6 @@ on:
         required: true
       SSH_KEY:
         required: true
-      # Token do GitHub usado para autenticar no GHCR na VPS antes do pull.
-      # Precisa de read:packages (write:packages tambem serve). O GITHUB_TOKEN
-      # efemero do workflow nao e suficiente quando a imagem foi publicada por
-      # um PAT (pacote nao fica vinculado ao repositorio).
-      GHCR_TOKEN:
-        required: true
 
 jobs:
   deploy:
@@ -36,13 +30,14 @@ jobs:
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
-          # Usuario dono do PAT (nao o actor do push): um colaborador
-          # diferente do dono do token quebraria o login.
-          GHCR_USER: ${{ github.repository_owner }}
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          # GITHUB_TOKEN efemero do workflow chamador (repository-scoped).
+          # O repositorio precisa ter acesso ao pacote em "Manage Actions
+          # access" (role Write) na pagina do pacote no GHCR.
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -z "$GHCR_TOKEN" ]; then
-            echo "ERRO: secret GHCR_TOKEN vazio — a VPS nao conseguira puxar imagens privadas do GHCR."
+            echo "ERRO: GITHUB_TOKEN indisponivel — a VPS nao conseguira puxar imagens privadas do GHCR."
             exit 1
           fi
           # Token via stdin: nao aparece em argv/ps nem nos logs.
