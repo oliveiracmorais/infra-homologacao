@@ -13,21 +13,60 @@ on:
         required: true
       SSH_KEY:
         required: true
+      # Token do GitHub usado para autenticar no GHCR na VPS antes do pull.
+      # Precisa de read:packages (write:packages tambem serve). O GITHUB_TOKEN
+      # efemero do workflow nao e suficiente quando a imagem foi publicada por
+      # um PAT (pacote nao fica vinculado ao repositorio).
+      GHCR_TOKEN:
+        required: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH (deploy.sh — backup + migrate + up + health)
+      - name: Setup SSH key
         env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
           SSH_KEY: ${{ secrets.SSH_KEY }}
-          APP_NAME: ${{ inputs.app-name }}
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+
+      - name: Login no GHCR na VPS
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          # Usuario dono do PAT (nao o actor do push): um colaborador
+          # diferente do dono do token quebraria o login.
+          GHCR_USER: ${{ github.repository_owner }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          if [ -z "$GHCR_TOKEN" ]; then
+            echo "ERRO: secret GHCR_TOKEN vazio — a VPS nao conseguira puxar imagens privadas do GHCR."
+            exit 1
+          fi
+          # Token via stdin: nao aparece em argv/ps nem nos logs.
+          printf '%s' "$GHCR_TOKEN" | ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            -i ~/.ssh/id_rsa "$SSH_USER@$SSH_HOST" \
+            "docker login ghcr.io --username '$GHCR_USER' --password-stdin"
+
+      - name: Deploy via SSH (deploy.sh — backup + migrate + up + health)
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          APP_NAME: ${{ inputs.app-name }}
+        run: |
           ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa \
             "$SSH_USER@$SSH_HOST" \
             "cd /srv/homol/scripts && ./deploy.sh --app ${APP_NAME} && docker image prune -f"
+
+      - name: Logout do GHCR na VPS
+        if: always()
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          # Remove a credencial da VPS: cada deploy autentica de novo, evitando
+          # token vencido/revogado esquecido no docker config (incidente 2026-11-06).
+          ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/.ssh/id_rsa \
+            "$SSH_USER@$SSH_HOST" "docker logout ghcr.io || true"
